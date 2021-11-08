@@ -1,0 +1,89 @@
+! pip install geopandas
+import geopandas as gpd
+
+#Ler Arquivo
+gdf = geopandas.read_file()
+
+!pip install splot
+import libpysal as lps
+
+# Calcular da matriz de peso espacial
+wq =  lps.weights.Queen.from_dataframe(gdf)# Using the adjacent matrix of quen type
+wq.transform = 'r' # Standardization matrix
+
+# Calcular o centróide do polígono
+centroids = gdf.geometry.centroid
+
+# Consultar Ilha
+gdf.iloc[0]
+
+# Excluir ilhas
+indexNames = gdf[gdf['name_muni'] == 'name'].index
+gdf.drop(indexNames , inplace=True)]
+
+# Cálculo da matriz de peso espacial
+wq =  lps.weights.Queen.from_dataframe(gdf)# Using the adjacent matrix of quen type
+wq.transform = 'r' # Standardization matrix
+
+# Calcular o centróide do polígono
+centroids = gdf.geometry.centroid
+
+import matplotlib.pyplot as plt
+from pylab import figure
+
+fig = figure(figsize=(8,6))
+
+plt.plot(centroids.x, centroids.y,'.')
+for k, neighs in wq.neighbors.items():
+  # print(k,neighs)
+  origin = centroids.iloc[k]
+  for neigh in neighs:
+    segment = centroids.iloc[[k,neigh]]
+    plt.plot(segment.x, segment.y, '-')
+plt.title('Queen Neighbor Graph')
+plt.axis('off')
+plt.show()
+
+# Matriz de adjacência para armazenar o grafo
+# Contiguidade: unidades espaciais compartilham uma fronteira comum
+wr =  lps.weights.Rook.from_dataframe(gdf) # Using Rook type adjacency matrix
+wr.transform = 'r' # Standardization matrix
+
+fig = figure(figsize=(8,6))
+
+plt.plot(centroids.x, centroids.y,'.')
+for k,neighs in wr.neighbors.items():
+    #print(k,neighs)
+    origin = centroids.iloc[k]
+    for neigh in neighs:
+        segment = centroids.iloc[[k,neigh]]
+        plt.plot(segment.x, segment.y, '-')
+plt.title('Rook Neighbor Graph')
+plt.axis('off')
+plt.show()
+
+!pip install esda
+import esda
+
+# Calcular o Índice de Moran
+y=gdf["mean"]
+mi = esda.moran.Moran(y, wq)
+
+#P < 0,001, mostra que a produtividade tem agregação espacial com 99,9% de confiança, e a correlação espacial é significativa
+
+print("Índice de Moran:",mi.I)
+print("Sob o pressuposto de distribuição aleatória Z, Os valores de teste são os seguintes",mi.z_rand)
+print("Sob o pressuposto de distribuição aleatória Z, Inspeção P Os valores são:",mi.p_rand)
+print("Sob o pressuposto de distribuição normal Z, Os valores de teste são os seguintes",mi.z_norm)
+print("Sob o pressuposto de distribuição normal Z, Inspeção P Os valores são:",mi.p_norm)
+
+from splot.esda import plot_moran
+
+# 1 - Gráfico de dispersão do Índice de Moran
+# 2 - Diagrama de Espalhamento de Moran
+# Q1 (+X+Y) e o Q2 (-X-Y): Indicam pontos de associação espacial POSITIVA, no snetido que uma localização possui vizinhos com valores SEMELHANTES
+# O Q3 (+X-Y) e o Q4 (-X+Y): Indicam pontos de associação espacial NEGATIVA, no snetido que uma localização possui vizinhos com valores DISTINTOS
+
+plot_moran(mi, zstandard=True, figsize=(10,4))
+# plot_moran(mi, zstandard=False, fitline_kwds=dict(color='#4393c3'))
+plt.show()
